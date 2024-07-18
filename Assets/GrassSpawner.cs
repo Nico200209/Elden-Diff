@@ -54,13 +54,20 @@ public class GrassSpawner : MonoBehaviour
     void InstantiateGrass(Vector3 position)
     {
         GameObject grass = Instantiate(grassPrefab, position, Quaternion.identity);
-        AdjustGrassPosition(grass, position);
+        AdjustGrassPosition(grass);
     }
 
-    void AdjustGrassPosition(GameObject grass, Vector3 position)
+    void AdjustGrassPosition(GameObject grass)
     {
-        Bounds bounds = grass.GetComponent<Renderer>().bounds;
-        float heightOffset = bounds.size.y / 2.0f; // Get half the height of the prefab
-        grass.transform.position = new Vector3(position.x, position.y + heightOffset, position.z);
+        // Perform a raycast from the grass prefab down to find the terrain
+        RaycastHit hit;
+        Vector3 start = new Vector3(grass.transform.position.x, grass.transform.position.y + 100, grass.transform.position.z);
+
+        if (Physics.Raycast(start, Vector3.down, out hit, Mathf.Infinity, whatIsGround))
+        {
+            Bounds bounds = grass.GetComponent<Renderer>().bounds;
+            float heightOffset = bounds.extents.y; // Get the half height of the prefab
+            grass.transform.position = new Vector3(hit.point.x, hit.point.y + heightOffset, hit.point.z);
+        }
     }
 }

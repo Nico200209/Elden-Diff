@@ -1405,7 +1405,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   grassPrefab: {fileID: 4026423519203016687, guid: 02ca52044dad91d449a29c832c584d3c,
     type: 3}
-  terrain: {fileID: 1831107263}
+  whatIsGround:
+    serializedVersion: 2
+    m_Bits: 8
   radius: 5
   density: 10
 --- !u!4 &1727252303
