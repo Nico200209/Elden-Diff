@@ -7,6 +7,7 @@ public class GrassSpawner : MonoBehaviour
     public LayerMask whatIsGround; // Layer mask for the terrain
     public float spawnRadius = 5.0f; // The radius within which to spawn grass
     public float eraserRadius = 3.0f; // The radius for the eraser tool
+    public float heightOffset = 0.0f; // Vertical offset for the grass placement
     public int density = 10; // Number of grass prefabs to spawn
     public Transform grassParent; // Parent transform for grass instances
 
@@ -132,8 +133,8 @@ public class GrassSpawner : MonoBehaviour
         if (Physics.Raycast(start, Vector3.down, out hit, Mathf.Infinity, whatIsGround))
         {
             Bounds bounds = grass.GetComponent<Renderer>().bounds;
-            float heightOffset = bounds.extents.y; // Get the half height of the prefab
-            grass.transform.position = new Vector3(hit.point.x, hit.point.y + heightOffset, hit.point.z);
+            float prefabHeightOffset = bounds.extents.y; // Get the half height of the prefab
+            grass.transform.position = new Vector3(hit.point.x, hit.point.y + prefabHeightOffset + heightOffset, hit.point.z);
 
             // Apply random rotation if enabled
             if (randomRotation)

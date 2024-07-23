@@ -1408,7 +1408,9 @@ MonoBehaviour:
   whatIsGround:
     serializedVersion: 2
     m_Bits: 8
-  radius: 5
+  spawnRadius: 5
+  eraserRadius: 3
+  heightOffset: -0.05
   density: 500
   grassParent: {fileID: 1825485425}
   randomRotation: 1
