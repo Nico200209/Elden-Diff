@@ -1417,6 +1417,8 @@ MonoBehaviour:
   randomScale: 1
   minScale: 25
   maxScale: 50
+  densityReductionMode: 0
+  densityReductionFactor: 0.1
 --- !u!4 &1727252303
 Transform:
   m_ObjectHideFlags: 0

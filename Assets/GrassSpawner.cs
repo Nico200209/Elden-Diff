@@ -3,18 +3,34 @@ using System.Collections.Generic;
 
 public class GrassSpawner : MonoBehaviour
 {
+    [Header("Grass Prefab Settings")]
     public GameObject grassPrefab; // The grass prefab to spawn
-    public LayerMask whatIsGround; // Layer mask for the terrain
-    public float spawnRadius = 5.0f; // The radius within which to spawn grass
-    public float eraserRadius = 3.0f; // The radius for the eraser tool
-    public float heightOffset = 0.0f; // Vertical offset for the grass placement
-    public int density = 10; // Number of grass prefabs to spawn
     public Transform grassParent; // Parent transform for grass instances
+    public LayerMask whatIsGround; // Layer mask for the terrain
+    public float heightOffset = 0.0f; // Vertical offset for the grass placement
 
+    [Header("Grass Spawning Settings")]
+    public float spawnRadius = 5.0f; // The radius within which to spawn grass
+    public int density = 10; // Number of grass prefabs to spawn
+
+    [Header("Eraser Tool Settings")]
+    public float eraserRadius = 3.0f; // The radius for the eraser tool
+    public bool densityReductionMode = false; // Toggle for density reduction mode
+    [Range(0f, 1f)]
+    public float densityReductionFactor = 0.5f; // Factor for density reduction (0 to 1)
+
+    [Header("Grass Appearance Settings")]
     public bool randomRotation = true; // Toggle for random rotation
     public bool randomScale = true; // Toggle for random scale
     public float minScale = 0.5f; // Minimum scale value
     public float maxScale = 2.0f; // Maximum scale value
+
+    [Header("Keybindings")]
+    public KeyCode spawnKey = KeyCode.Mouse0; // Key to spawn grass
+    public KeyCode removeKey = KeyCode.Mouse1; // Key to remove grass
+    public KeyCode toggleRotationKey = KeyCode.R; // Key to toggle random rotation
+    public KeyCode toggleScaleKey = KeyCode.S; // Key to toggle random scale
+    public KeyCode toggleDensityReductionKey = KeyCode.D; // Key to toggle density reduction mode
 
     private List<Vector3> savedGrassPositions = new List<Vector3>(); // List to store positions of placed grass
 
@@ -26,7 +42,7 @@ public class GrassSpawner : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) // Left mouse button click to add grass
+        if (Input.GetKeyDown(spawnKey)) // Key to add grass
         {
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -38,26 +54,38 @@ public class GrassSpawner : MonoBehaviour
             }
         }
 
-        if (Input.GetMouseButton(1)) // Right mouse button held down to remove grass
+        if (Input.GetKey(removeKey)) // Key held down to remove grass
         {
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, whatIsGround))
             {
-                RemoveGrass(hit.point, eraserRadius);
-                SaveGrassPositions(); // Save grass positions after removing grass
+                if (densityReductionMode)
+                {
+                    ReduceDensity(hit.point, eraserRadius);
+                }
+                else
+                {
+                    RemoveGrass(hit.point, eraserRadius);
+                }
+                SaveGrassPositions(); // Save grass positions after modifying grass
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.R)) // Toggle random rotation with 'R' key
+        if (Input.GetKeyDown(toggleRotationKey)) // Toggle random rotation
         {
             randomRotation = !randomRotation;
         }
 
-        if (Input.GetKeyDown(KeyCode.S)) // Toggle random scale with 'S' key
+        if (Input.GetKeyDown(toggleScaleKey)) // Toggle random scale
         {
             randomScale = !randomScale;
+        }
+
+        if (Input.GetKeyDown(toggleDensityReductionKey)) // Toggle density reduction mode
+        {
+            densityReductionMode = !densityReductionMode;
         }
     }
 
@@ -165,6 +193,30 @@ public class GrassSpawner : MonoBehaviour
 
         foreach (Transform grass in grassToRemove)
         {
+            savedGrassPositions.Remove(grass.position);
+            Destroy(grass.gameObject);
+        }
+    }
+
+    void ReduceDensity(Vector3 center, float radius)
+    {
+        List<Transform> grassWithinRadius = new List<Transform>();
+
+        foreach (Transform grass in grassParent)
+        {
+            if (Vector3.Distance(grass.position, center) <= radius)
+            {
+                grassWithinRadius.Add(grass);
+            }
+        }
+
+        int grassToRemoveCount = Mathf.FloorToInt(grassWithinRadius.Count * densityReductionFactor); // Reduce density based on factor
+
+        for (int i = 0; i < grassToRemoveCount; i++)
+        {
+            int randomIndex = Random.Range(0, grassWithinRadius.Count);
+            Transform grass = grassWithinRadius[randomIndex];
+            grassWithinRadius.RemoveAt(randomIndex);
             savedGrassPositions.Remove(grass.position);
             Destroy(grass.gameObject);
         }
