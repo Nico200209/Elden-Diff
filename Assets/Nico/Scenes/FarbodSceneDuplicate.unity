@@ -1411,6 +1411,10 @@ MonoBehaviour:
   radius: 5
   density: 500
   grassParent: {fileID: 1825485425}
+  randomRotation: 1
+  randomScale: 1
+  minScale: 25
+  maxScale: 50
 --- !u!4 &1727252303
 Transform:
   m_ObjectHideFlags: 0
