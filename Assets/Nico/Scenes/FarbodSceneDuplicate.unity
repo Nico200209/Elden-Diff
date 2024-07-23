@@ -1409,7 +1409,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   radius: 5
-  density: 100
+  density: 500
   grassParent: {fileID: 1825485425}
 --- !u!4 &1727252303
 Transform:
