@@ -12,6 +12,7 @@ public class GrassSpawner : MonoBehaviour
     [Header("Grass Spawning Settings")]
     public float spawnRadius = 5.0f; // The radius within which to spawn grass
     public int density = 10; // Number of grass prefabs to spawn
+    public float maxDistance = 50f; // Maximum distance for grass to be active
 
     [Header("Eraser Tool Settings")]
     public float eraserRadius = 3.0f; // The radius for the eraser tool
@@ -32,11 +33,15 @@ public class GrassSpawner : MonoBehaviour
     public KeyCode toggleScaleKey = KeyCode.S; // Key to toggle random scale
     public KeyCode toggleDensityReductionKey = KeyCode.D; // Key to toggle density reduction mode
 
+    private List<Transform> grassPool = new List<Transform>(); // Pool of grass objects
     private List<Vector3> savedGrassPositions = new List<Vector3>(); // List to store positions of placed grass
+    private Camera mainCamera;
 
     void Start()
     {
+        mainCamera = Camera.main;
         LoadSavedGrassPositions(); // Load saved grass positions on game start
+        InitializeGrassPool(); // Initialize grass object pool
         SpawnSavedGrass(); // Spawn grass at saved positions
     }
 
@@ -45,7 +50,7 @@ public class GrassSpawner : MonoBehaviour
         if (Input.GetKeyDown(spawnKey)) // Key to add grass
         {
             RaycastHit hit;
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, whatIsGround))
             {
@@ -57,7 +62,7 @@ public class GrassSpawner : MonoBehaviour
         if (Input.GetKey(removeKey)) // Key held down to remove grass
         {
             RaycastHit hit;
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, whatIsGround))
             {
@@ -87,6 +92,8 @@ public class GrassSpawner : MonoBehaviour
         {
             densityReductionMode = !densityReductionMode;
         }
+
+        UpdateGrassVisibility();
     }
 
     void SpawnGrass(Vector3 center)
@@ -97,10 +104,11 @@ public class GrassSpawner : MonoBehaviour
             Vector3 terrainPos = GetTerrainPosition(randomPos);
             if (terrainPos != Vector3.zero) // Ensure valid terrain position
             {
-                GameObject grass = Instantiate(grassPrefab, terrainPos, Quaternion.identity);
-                grass.transform.SetParent(grassParent); // Set parent explicitly
-                AdjustGrass(grass);
-                savedGrassPositions.Add(grass.transform.position); // Add position to saved list
+                Transform grass = GetPooledGrass();
+                grass.position = terrainPos;
+                grass.gameObject.SetActive(true);
+                AdjustGrass(grass.gameObject);
+                savedGrassPositions.Add(grass.position); // Add position to saved list
             }
         }
     }
@@ -129,9 +137,10 @@ public class GrassSpawner : MonoBehaviour
     {
         foreach (Vector3 position in savedGrassPositions)
         {
-            GameObject grass = Instantiate(grassPrefab, position, Quaternion.identity);
-            grass.transform.SetParent(grassParent); // Set parent explicitly
-            AdjustGrass(grass);
+            Transform grass = GetPooledGrass();
+            grass.position = position;
+            grass.gameObject.SetActive(true);
+            AdjustGrass(grass.gameObject);
         }
     }
 
@@ -194,7 +203,7 @@ public class GrassSpawner : MonoBehaviour
         foreach (Transform grass in grassToRemove)
         {
             savedGrassPositions.Remove(grass.position);
-            Destroy(grass.gameObject);
+            grass.gameObject.SetActive(false); // Deactivate instead of destroying
         }
     }
 
@@ -218,7 +227,44 @@ public class GrassSpawner : MonoBehaviour
             Transform grass = grassWithinRadius[randomIndex];
             grassWithinRadius.RemoveAt(randomIndex);
             savedGrassPositions.Remove(grass.position);
-            Destroy(grass.gameObject);
+            grass.gameObject.SetActive(false); // Deactivate instead of destroying
+        }
+    }
+
+    void InitializeGrassPool()
+    {
+        for (int i = 0; i < density * 10; i++)
+        {
+            GameObject grass = Instantiate(grassPrefab, grassParent);
+            grass.SetActive(false);
+            grassPool.Add(grass.transform);
+        }
+    }
+
+    Transform GetPooledGrass()
+    {
+        foreach (Transform grass in grassPool)
+        {
+            if (!grass.gameObject.activeInHierarchy)
+            {
+                return grass;
+            }
+        }
+
+        // If no inactive grass is available, instantiate a new one
+        GameObject newGrass = Instantiate(grassPrefab, grassParent);
+        newGrass.SetActive(false);
+        grassPool.Add(newGrass.transform);
+        return newGrass.transform;
+    }
+
+    void UpdateGrassVisibility()
+    {
+        Vector3 playerPosition = mainCamera.transform.position;
+        foreach (Transform grass in grassParent)
+        {
+            float distance = Vector3.Distance(playerPosition, grass.position);
+            grass.gameObject.SetActive(distance <= maxDistance);
         }
     }
 
