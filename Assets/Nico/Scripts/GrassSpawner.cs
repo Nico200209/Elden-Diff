@@ -14,6 +14,12 @@ public class GrassSpawner : MonoBehaviour
     public int density = 10; // Number of grass prefabs to spawn
     public float maxDistance = 50f; // Maximum distance for grass to be active
 
+    [Header("Brush Shape Settings")]
+    public BrushShape brushShape = BrushShape.Circle; // Default brush shape
+    public Texture2D customBrushPattern; // Custom brush pattern
+
+    public enum BrushShape { Square, Circle, Custom }
+
     [Header("Eraser Tool Settings")]
     public float eraserRadius = 3.0f; // The radius for the eraser tool
     public bool densityReductionMode = false; // Toggle for density reduction mode
@@ -32,6 +38,7 @@ public class GrassSpawner : MonoBehaviour
     public KeyCode toggleRotationKey = KeyCode.R; // Key to toggle random rotation
     public KeyCode toggleScaleKey = KeyCode.S; // Key to toggle random scale
     public KeyCode toggleDensityReductionKey = KeyCode.D; // Key to toggle density reduction mode
+    public KeyCode toggleBrushShapeKey = KeyCode.B; // Key to toggle brush shape
 
     private List<Transform> grassPool = new List<Transform>(); // Pool of grass objects
     private List<Vector3> savedGrassPositions = new List<Vector3>(); // List to store positions of placed grass
@@ -93,15 +100,36 @@ public class GrassSpawner : MonoBehaviour
             densityReductionMode = !densityReductionMode;
         }
 
+        if (Input.GetKeyDown(toggleBrushShapeKey)) // Toggle brush shape
+        {
+            brushShape = (BrushShape)(((int)brushShape + 1) % System.Enum.GetValues(typeof(BrushShape)).Length);
+        }
+
         UpdateGrassVisibility();
     }
 
     void SpawnGrass(Vector3 center)
     {
-        for (int i = 0; i < density; i++)
+        List<Vector3> positions = new List<Vector3>();
+        switch (brushShape)
         {
-            Vector3 randomPos = GetRandomPosition(center, spawnRadius);
-            Vector3 terrainPos = GetTerrainPosition(randomPos);
+            case BrushShape.Square:
+                positions = GetSquarePositions(center, spawnRadius, density);
+                break;
+            case BrushShape.Circle:
+                positions = GetCirclePositions(center, spawnRadius, density);
+                break;
+            case BrushShape.Custom:
+                if (customBrushPattern != null)
+                {
+                    positions = GetCustomPatternPositions(center, spawnRadius, customBrushPattern);
+                }
+                break;
+        }
+
+        foreach (Vector3 position in positions)
+        {
+            Vector3 terrainPos = GetTerrainPosition(position);
             if (terrainPos != Vector3.zero) // Ensure valid terrain position
             {
                 Transform grass = GetPooledGrass();
@@ -149,6 +177,50 @@ public class GrassSpawner : MonoBehaviour
         float x = Random.Range(-radius, radius);
         float z = Random.Range(-radius, radius);
         return new Vector3(center.x + x, center.y, center.z + z);
+    }
+
+    List<Vector3> GetSquarePositions(Vector3 center, float radius, int count)
+    {
+        List<Vector3> positions = new List<Vector3>();
+        for (int i = 0; i < count; i++)
+        {
+            positions.Add(GetRandomPosition(center, radius));
+        }
+        return positions;
+    }
+
+    List<Vector3> GetCirclePositions(Vector3 center, float radius, int count)
+    {
+        List<Vector3> positions = new List<Vector3>();
+        for (int i = 0; i < count; i++)
+        {
+            float angle = Random.Range(0f, Mathf.PI * 2);
+            float r = Random.Range(0f, radius);
+            float x = Mathf.Cos(angle) * r;
+            float z = Mathf.Sin(angle) * r;
+            positions.Add(new Vector3(center.x + x, center.y, center.z + z));
+        }
+        return positions;
+    }
+
+    List<Vector3> GetCustomPatternPositions(Vector3 center, float radius, Texture2D pattern)
+    {
+        List<Vector3> positions = new List<Vector3>();
+        float scaleX = radius * 2 / pattern.width;
+        float scaleY = radius * 2 / pattern.height;
+        for (int x = 0; x < pattern.width; x++)
+        {
+            for (int y = 0; y < pattern.height; y++)
+            {
+                if (pattern.GetPixel(x, y).a > 0.5f) // Check if the pixel is active
+                {
+                    float posX = center.x + (x * scaleX - radius);
+                    float posY = center.z + (y * scaleY - radius);
+                    positions.Add(new Vector3(posX, center.y, posY));
+                }
+            }
+        }
+        return positions;
     }
 
     Vector3 GetTerrainPosition(Vector3 position)
@@ -231,11 +303,22 @@ public class GrassSpawner : MonoBehaviour
         }
     }
 
+    void UpdateGrassVisibility()
+    {
+        Vector3 playerPosition = mainCamera.transform.position;
+        foreach (Transform grass in grassParent)
+        {
+            float distance = Vector3.Distance(playerPosition, grass.position);
+            grass.gameObject.SetActive(distance <= maxDistance);
+        }
+    }
+
     void InitializeGrassPool()
     {
-        for (int i = 0; i < density * 10; i++)
+        for (int i = 0; i < density * 10; i++) // Arbitrary large pool size
         {
-            GameObject grass = Instantiate(grassPrefab, grassParent);
+            GameObject grass = Instantiate(grassPrefab, Vector3.zero, Quaternion.identity);
+            grass.transform.SetParent(grassParent);
             grass.SetActive(false);
             grassPool.Add(grass.transform);
         }
@@ -250,22 +333,12 @@ public class GrassSpawner : MonoBehaviour
                 return grass;
             }
         }
-
-        // If no inactive grass is available, instantiate a new one
-        GameObject newGrass = Instantiate(grassPrefab, grassParent);
+        // If no inactive grass is available, create a new one (optional, based on your pooling strategy)
+        GameObject newGrass = Instantiate(grassPrefab, Vector3.zero, Quaternion.identity);
+        newGrass.transform.SetParent(grassParent);
         newGrass.SetActive(false);
         grassPool.Add(newGrass.transform);
         return newGrass.transform;
-    }
-
-    void UpdateGrassVisibility()
-    {
-        Vector3 playerPosition = mainCamera.transform.position;
-        foreach (Transform grass in grassParent)
-        {
-            float distance = Vector3.Distance(playerPosition, grass.position);
-            grass.gameObject.SetActive(distance <= maxDistance);
-        }
     }
 
     // Helper class for JSON serialization/deserialization of arrays
